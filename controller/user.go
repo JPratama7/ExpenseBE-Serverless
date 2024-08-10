@@ -1,13 +1,15 @@
 package controller
 
 import (
+	"crud/model"
 	"crud/repository"
+	"crud/util"
 	"encoding/json"
 	"net/http"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	userDb, err := ExtractFromRequest[repository.UserRepository](r, "userDb")
+	userDb, err := util.ExtractFromRequest[repository.UserRepository](r, "userDb")
 	if err != nil {
 		NewErrorResponse(http.StatusInternalServerError, err.Error()).Write(w)
 		return
@@ -31,12 +33,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if _, err = userDb.GetByEmailOrUsername(data.Username, data.Email); err == nil {
+	if _, err = userDb.GetByEmailOrUsername(r.Context(), data.Username, data.Email); err == nil {
 		NewErrorResponse(http.StatusBadRequest, "User already exists").Write(w)
 		return
 	}
 
-	res, err := userDb.Create(data.Username, data.Email, data.Password)
+	res, err := userDb.Create(r.Context(), model.User{Username: data.Username, Email: data.Email, PasswordHash: data.Password})
 	if err != nil {
 		NewErrorResponse(http.StatusInternalServerError, err.Error()).Write(w)
 		return
@@ -47,7 +49,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	userDb, err := ExtractFromRequest[repository.UserRepository](r, "userDb")
+	userDb, err := util.ExtractFromRequest[repository.UserRepository](r, "userDb")
 	if err != nil {
 		NewErrorResponse(http.StatusInternalServerError, err.Error()).Write(w)
 		return
@@ -71,7 +73,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	user, err := userDb.GetByEmailOrUsername(data.Username, data.Email)
+	user, err := userDb.GetByEmailOrUsername(r.Context(), data.Username, data.Email)
 	if err != nil {
 		NewErrorResponse(http.StatusBadRequest, "Invalid email or password").Write(w)
 		return
