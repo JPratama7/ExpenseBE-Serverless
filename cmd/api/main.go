@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crud/controller"
 	"crud/route"
 	"log"
 	"net/http"
@@ -10,13 +9,8 @@ import (
 
 func main() {
 
-	router := route.NewMuxer()
-
-	router.AddRoute(route.POST, "/register", controller.Register)
-	router.AddRoute(route.POST, "/login", controller.Login)
-
 	srv := &http.Server{
-		Handler: router,
+		Handler: route.Router,
 		Addr:    "127.0.0.1:8000",
 
 		// Good practice: enforce timeouts for servers you create!
