@@ -1,37 +1,12 @@
 package controller
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 )
-
-type ContextKey string
-
-func (k ContextKey) String() string {
-	return string(k)
-}
-
-func ExtractFromRequest[T any](r *http.Request, key string) (res T, err error) {
-	res, ok := r.Context().Value(ContextKey(key)).(T)
-	if !ok {
-		err = errors.New("value not found")
-		return
-	}
-	return
-}
-
-func InsertToRequest[T any](r *http.Request, key string, value T) *http.Request {
-	return r.WithContext(
-		context.WithValue(
-			r.Context(), ContextKey(key), value,
-		),
-	)
-}
 
 func HashPassword(password string) (string, error) {
 
