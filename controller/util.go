@@ -10,8 +10,14 @@ import (
 	"net/http"
 )
 
+type ContextKey string
+
+func (k ContextKey) String() string {
+	return string(k)
+}
+
 func ExtractFromRequest[T any](r *http.Request, key string) (res T, err error) {
-	res, ok := r.Context().Value(key).(T)
+	res, ok := r.Context().Value(ContextKey(key)).(T)
 	if !ok {
 		err = errors.New("value not found")
 		return
@@ -19,10 +25,10 @@ func ExtractFromRequest[T any](r *http.Request, key string) (res T, err error) {
 	return
 }
 
-func InsertToRequest[T any](r *http.Request, key string, value T) {
-	r.WithContext(
+func InsertToRequest[T any](r *http.Request, key string, value T) *http.Request {
+	return r.WithContext(
 		context.WithValue(
-			r.Context(), key, value,
+			r.Context(), ContextKey(key), value,
 		),
 	)
 }
