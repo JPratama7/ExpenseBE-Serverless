@@ -3,6 +3,7 @@ package token
 import (
 	"aidanwoods.dev/go-paseto"
 	"crud/util/token/option"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -45,7 +46,7 @@ func TestDecrypt(t *testing.T) {
 	})
 
 	token, err := p.Encrypt(
-		WithBody("key1", "value1"),
+		WithClaims("key1", "value1"),
 		WithClaims("claims", map[string]any{"claim1": "value1", "claim2": 2}),
 	)
 	if err != nil {
@@ -81,7 +82,7 @@ func TestCustomClaims(t *testing.T) {
 	})
 
 	token, _ := p.Encrypt(
-		WithBody("key1", "value1"),
+		WithClaims("key1", "value1"),
 		WithClaims("claims", map[string]any{"claim1": "value1", "claim2": 2}),
 	)
 
@@ -137,7 +138,7 @@ func TestWithBody(t *testing.T) {
 		option.Expiration = time.Hour
 	})
 
-	enc, err := p.Encrypt(WithBody("key", "value"))
+	enc, err := p.Encrypt(WithClaims("key", "value"))
 	if err != nil {
 		t.Fatalf("WithBody failed: %v", err)
 	}
@@ -185,4 +186,60 @@ func TestWithClaims(t *testing.T) {
 	if retrievedClaims["claim1"] != "value1" || retrievedClaims["claim2"] != float64(2) {
 		t.Errorf("Retrieved claims do not match original claims")
 	}
+}
+
+func TestInvalidToken(t *testing.T) {
+	secretKey := paseto.NewV4AsymmetricSecretKey()
+
+	publicKey := secretKey.Public()
+
+	p := NewPaseto(publicKey, secretKey, func(option *option.Option) {
+		option.Issuer = "test_issuer"
+		option.Subject = "test_subject"
+		option.Audience = "test_audience"
+		option.Expiration = time.Hour
+	})
+
+	_, err := p.Decrypt("invalid_token")
+	assert.Error(t, err)
+}
+
+func TestWithOptions(t *testing.T) {
+	secretKey := paseto.NewV4AsymmetricSecretKey()
+
+	publicKey := secretKey.Public()
+
+	p := NewPaseto(publicKey, secretKey, func(option *option.Option) {
+		option.Issuer = "test_issuer"
+		option.Subject = "test_subject"
+		option.Audience = "test_audience"
+		option.Expiration = time.Hour
+	})
+
+	token, err := p.Encrypt(
+		WithExpiration(time.Hour),
+		WithNotBefore(time.Minute),
+		WithIssuer("custom_issuer"),
+		WithSubject("custom_subject"),
+		WithAudience("custom_audience"),
+		WithClaims("claims", map[string]any{"foo": "bar"}),
+	)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
+
+	decrypted, err := p.Decrypt(token)
+	assert.NoError(t, err)
+	assert.NotNil(t, decrypted)
+
+	issuer, err := decrypted.GetIssuer()
+	assert.NoError(t, err)
+	assert.Equal(t, "custom_issuer", issuer)
+
+	subject, err := decrypted.GetSubject()
+	assert.NoError(t, err)
+	assert.Equal(t, "custom_subject", subject)
+
+	audience, err := decrypted.GetAudience()
+	assert.NoError(t, err)
+	assert.Equal(t, "custom_audience", audience)
 }
