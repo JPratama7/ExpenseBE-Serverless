@@ -2,8 +2,11 @@ package controller
 
 import (
 	"crud/model"
+	"crud/model/request"
+	"crud/model/response"
 	"crud/repository"
 	"crud/util"
+	"crud/util/token"
 	"encoding/json"
 	"net/http"
 )
@@ -15,15 +18,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type Register struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	data := new(Register)
+	data := new(request.Auth)
 
 	defer r.Body.Close()
+
 	dec := json.NewDecoder(r.Body)
 	err = dec.Decode(data)
 
@@ -38,14 +36,28 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+<<<<<<< HEAD
 	res, err := userDb.Create(r.Context(), model.User{Username: data.Username, Email: data.Email, PasswordHash: data.Password})
+=======
+	hashed, err := HashPassword(data.Password)
+	if err != nil {
+		NewErrorResponse(http.StatusInternalServerError, err.Error()).Write(w)
+		return
+	}
+
+	res, err := userDb.Create(r.Context(), model.User{
+		Username:     data.Username,
+		Email:        data.Email,
+		PasswordHash: hashed,
+	})
+
+>>>>>>> 8a7e0ed (refactor: move and change few logic)
 	if err != nil {
 		NewErrorResponse(http.StatusInternalServerError, err.Error()).Write(w)
 		return
 	}
 
 	NewResponse(http.StatusCreated, true, "User created", res.Id.Hex()).Write(w)
-
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -55,15 +67,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type Login struct {
-		Email    string `json:"email"`
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-
-	data := new(Login)
+	data := new(request.Auth)
 
 	defer r.Body.Close()
+
 	dec := json.NewDecoder(r.Body)
 	err = dec.Decode(data)
 
@@ -91,6 +98,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Generate Access and Refresh Token
+	tokenizer, err := util.ExtractFromRequest[token.Token](r, "token")
+	if err != nil {
+		NewErrorResponse(http.StatusInternalServerError, err.Error()).Write(w)
+		return
+	}
 
-	NewResponse(http.StatusOK, true, "Login successful", user.Id.Hex()).Write(w)
+	enc := tokenizer.Encrypt(
+		token.WithClaims("user_id", user.Id.Hex()),
+		token.WithClaims("user_name", user.Username),
+		token.WithClaims("user_email", user.Email),
+	)
+
+	NewResponse(http.StatusOK, true, "Login successful", response.Auth{AccessToken: enc}).Write(w)
 }
